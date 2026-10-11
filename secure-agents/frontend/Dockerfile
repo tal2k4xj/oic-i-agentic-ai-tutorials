@@ -7,17 +7,24 @@ USER root
 
 COPY package*.json /app/
 
-RUN npm install
+RUN npm install --legacy-peer-deps
+
 
 COPY ./ /app/
 
 
 FROM base AS build-stage
 
-ARG VITE_API_URL=${VITE_API_URL}
+ARG VITE_API_URL
+ARG VITE_WXO_HOST_URL
+ARG VITE_WXO_ORCHESTRATION_ID
+ARG VITE_WXO_AGENT_ID
+ARG VITE_WXO_AGENT_ENVIRONMENT_ID
+ARG VITE_WXO_DEPLOYMENT_PLATFORM
+ARG VITE_WXO_CRN
+ARG VITE_WXO_TENANT_ID
 
 RUN npm run build
-
 
 # Stage 1, based on Nginx, to have only the compiled app, ready for production with Nginx
 # FROM nginx:1
