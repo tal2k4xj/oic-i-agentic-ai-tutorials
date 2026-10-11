@@ -12,6 +12,116 @@
 # Application Deployment Functions
 #############################################
 
+# Helper: create BuildConfig + ImageStream + Deployment + Service for a component
+# This avoids oc new-app which probes the SSH URL locally and fails on unknown host keys.
+# Usage: create_app_from_git <name> <context-dir> <port>
+create_app_from_git() {
+    local name=$1
+    local context_dir=$2
+    local port=$3
+
+    print_status "Creating ImageStream $name..." "deployment"
+    cat <<EOF | oc apply -f -
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: $name
+  labels:
+    app: $name
+EOF
+
+    print_status "Creating BuildConfig $name..." "deployment"
+    cat <<EOF | oc apply -f -
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: $name
+  labels:
+    app: $name
+spec:
+  source:
+    type: Git
+    git:
+      uri: "$GIT_SSH_URL"
+    contextDir: "$context_dir"
+    sourceSecret:
+      name: git-secret
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "$name:latest"
+  triggers:
+  - type: GitHub
+    github:
+      secret: "$name-webhook-secret"
+  - type: Generic
+    generic:
+      secret: "$name-generic-webhook-secret"
+  - type: ConfigChange
+EOF
+
+    print_status "Creating Deployment $name..." "deployment"
+    cat <<EOF | oc apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $name
+  labels:
+    app: $name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $name
+  template:
+    metadata:
+      labels:
+        app: $name
+    spec:
+      containers:
+      - name: $name
+        image: " "
+        imagePullPolicy: Always
+        ports:
+        - containerPort: $port
+          protocol: TCP
+EOF
+
+    # Patch the deployment to use the ImageStream image
+    oc set image deployment/$name $name=$name:latest
+
+    # Link the image trigger so the deployment updates when a new image is pushed
+    oc set triggers deployment/$name \
+        --from-image=$name:latest \
+        --containers=$name 2>/dev/null || true
+
+    print_status "Creating Service $name..." "deployment"
+    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: $name
+  labels:
+    app: $name
+spec:
+  selector:
+    app: $name
+  ports:
+  - port: $port
+    targetPort: $port
+    protocol: TCP
+EOF
+
+    print_status "Starting initial build for $name..." "deployment"
+    oc start-build $name
+
+    return 0
+}
+
+
 # Function to configure buildconfig webhook branch filter
 configure_buildconfig_branch_filter() {
     local buildconfig_name=$1
@@ -80,7 +190,7 @@ deploy_frontend() {
         fi
     else
         print_status "Creating new frontend application..." "deployment"
-        oc new-app --name=frontend --strategy=docker --context-dir=frontend --source-secret=git-secret "$GIT_SSH_URL"
+        create_app_from_git "frontend" "secure-agents/frontend" "8080" || return 1
     fi
     
     # Configure branch filter if specified
@@ -123,7 +233,7 @@ deploy_backend() {
         fi
     else
         print_status "Creating new backend application..." "deployment"
-        oc new-app --name=backend --strategy=docker --context-dir=backend --source-secret=git-secret "$GIT_SSH_URL"
+        create_app_from_git "backend" "secure-agents/backend" "8000" || return 1
     fi
     
     # Configure branch filter if specified
@@ -369,7 +479,7 @@ spec:
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /v1/sys/health?standbyok=true
+            path: /v1/sys/health?standbyok=true&uninitcode=204&sealedcode=204
             port: 8200
             scheme: HTTP
           initialDelaySeconds: 60
@@ -464,7 +574,7 @@ deploy_mcp() {
         fi
     else
         print_status "Creating new MCP application..." "deployment"
-        oc new-app --name=mcp --strategy=docker --context-dir=mcp --source-secret=git-secret "$GIT_SSH_URL"
+        create_app_from_git "mcp" "secure-agents/mcp" "8001" || return 1
     fi
     
     # Configure branch filter if specified

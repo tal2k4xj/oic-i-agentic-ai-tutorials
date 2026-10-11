@@ -270,9 +270,18 @@ setup_ssh_keys() {
         oc delete secret git-secret
     fi
     
+    print_status "Fetching GitHub SSH host key for known_hosts..." "ssh"
+    local github_host="${GITHUB_HOST:-$DEFAULT_GITHUB_HOST}"
+    local known_hosts
+    known_hosts=$(ssh-keyscan "$github_host" 2>/dev/null)
+    if [[ -z "$known_hosts" ]]; then
+        print_warning "Could not fetch SSH host key for $github_host. Builds may fail on host key verification." "ssh"
+    fi
+
     print_status "Creating OpenShift secret..." "ssh"
     oc create secret generic git-secret \
         --from-file=ssh-privatekey="$key_path" \
+        --from-literal=known_hosts="$known_hosts" \
         --type=kubernetes.io/ssh-auth
     
     return 0
