@@ -1,5 +1,7 @@
 @use "preflight.scss";
 
+@source "../../**/*.{ts,tsx}";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
