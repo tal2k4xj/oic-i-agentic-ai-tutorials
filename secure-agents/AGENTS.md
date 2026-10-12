@@ -294,6 +294,35 @@ ARG VITE_WXO_CRN
 ARG VITE_WXO_TENANT_ID
 ```
 
+### 6. UI renders unstyled / logo appears oversized
+
+**Symptom:** The login page loads but the logo fills the entire screen, layout has no
+spacing, and utility classes like `flex`, `w-12`, `min-h-[100dvh]` have no effect.
+
+**Cause:** Tailwind v4 with `@tailwindcss/postcss` **ignores the `content` array in
+`tailwind.config.js`**. In v4, the `content` config key is a no-op in compatibility
+mode — Tailwind uses its own auto-detection or explicit `@source` directives instead.
+Because no `@source` was set, Tailwind v4 never scanned the TSX files and generated
+zero utility classes in the output CSS.
+
+**Fix (already in `frontend/src/styles/tailwind.scss`):**
+
+```scss
+@use "preflight.scss";
+
+@source "../../**/*.{ts,tsx}";   /* ← tells Tailwind v4 where to scan for classes */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+The path `../../**/*.{ts,tsx}` is relative to `src/styles/` and resolves to
+`src/**/*.{ts,tsx}` — covering all components, routes, and hooks.
+
+**Note:** `@source` must come **after** all `@use` rules (Sass ordering requirement)
+and **before** `@tailwind` directives.
+
 ---
 
 ## Deployment Script Quick Reference
@@ -338,4 +367,4 @@ oc get builds -n confused-deputy --sort-by=.metadata.creationTimestamp
 
 ---
 
-*This file was last updated after the initial OpenShift deployment session on 2026-10-11.*
+*This file was last updated after the OpenShift deployment session on 2026-10-12.*
