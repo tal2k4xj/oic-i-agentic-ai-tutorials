@@ -15,6 +15,31 @@ const normalizeGroups = (raw: unknown): string[] => {
     .filter(Boolean);
 };
 
+// End the embedded watsonx Orchestrate session so the next user starts clean.
+// Without this the previous user's WxO session lingers and the next login gets
+// "Agent fetching failed" (400s) until it expires.
+const teardownOrchestrate = () => {
+  try {
+    (window as any).wxoLoader?.chatInstance?.destroy?.();
+  } catch (e) {
+    console.warn("Failed to destroy WxO chat instance", e);
+  }
+  // Cookie WxO sets on this origin to remember the embedded user
+  document.cookie = "embed_user_id=; Max-Age=0; path=/";
+  for (const store of [localStorage, sessionStorage]) {
+    Object.keys(store)
+      .filter((k) => k.toLowerCase().includes("wxo"))
+      .forEach((k) => store.removeItem(k));
+  }
+};
+
+const clearSession = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("id_token");
+  teardownOrchestrate();
+};
+
 const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null;
 };
@@ -91,18 +116,13 @@ const useAuth = () => {
       return null;
     },
     onSuccess: () => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("id_token");
-      // Full reload so the embedded WxO chat (and its user session) is torn down.
+      clearSession();
+      // Full reload so the embedded WxO chat is torn down completely.
       // The login page uses prompt=login, so IBM Verify always asks for credentials.
       window.location.href = "/login";
     },
     onError: () => {
-      // On error, still clear local storage and redirect
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("id_token");
+      clearSession();
       window.location.href = "/login";
     },
   });

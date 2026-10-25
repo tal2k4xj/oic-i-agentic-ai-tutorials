@@ -109,6 +109,17 @@ const OrchestrateChat: React.FC = () => {
     console.log("✅ User authenticated, initializing Watson Orchestrate");
     window.__hasLoadedWatsonSources__ = true;
 
+    // If WxO still remembers a different embedded user in this browser (e.g. the
+    // tab was closed without logging out), drop it so the new user starts clean.
+    const embedUser = document.cookie
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith("embed_user_id="))
+      ?.split("=")[1];
+    if (embedUser && embedUser !== user?.preferred_username) {
+      document.cookie = "embed_user_id=; Max-Age=0; path=/";
+    }
+
     // Fetch WxO config from backend, get identity token, then configure and load WxO
     Promise.all([
       fetch(`${import.meta.env.VITE_API_URL || ""}/api/v1/wxo/config`).then(
