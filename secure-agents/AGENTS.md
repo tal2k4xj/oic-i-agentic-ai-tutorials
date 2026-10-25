@@ -397,6 +397,9 @@ oc get builds -n confused-deputy --sort-by=.metadata.creationTimestamp
   `.../environments/<id>/release`) after an agent re-import + deploy, while tenant ID and embed keys were correct:
   redeploying the agent again (`orchestrate agents import -f ... && orchestrate agents deploy --name ...`) fixed it.
   Root cause not identified. Check embed keys via `GET $SERVICE_INSTANCE/v1/embed/secure/config` (IAM token).
+- **Read-Write user (Bob) denied on reads:** the MCP server picks the Vault DB role per *operation* (reads always
+  use `database/creds/readonly`), but the `readwrite` policy only allowed `creds/readwrite`. The `readwrite` policy
+  now also grants `database/creds/readonly` (in `vault-setup.sh`; live fix: `vault policy write readwrite ...`).
 - **CRN lookup:** `orchestrate channels webchat embed` needs IBM Cloud resource-controller access; otherwise
   build the CRN as `crn:v1:bluemix:public:watsonx-orchestrate:<region>:a/<account-id>:<instance-id>::`.
 

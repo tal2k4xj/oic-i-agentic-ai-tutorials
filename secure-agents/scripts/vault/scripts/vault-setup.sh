@@ -384,6 +384,11 @@ path "database/creds/readwrite" {
   capabilities = ["read"]
 }
 
+# Read-write users can also read: the MCP server requests the readonly role for read operations
+path "database/creds/readonly" {
+  capabilities = ["read"]
+}
+
 # Allow listing database roles
 path "database/roles" {
   capabilities = ["list"]
