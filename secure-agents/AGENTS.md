@@ -400,6 +400,11 @@ oc get builds -n confused-deputy --sort-by=.metadata.creationTimestamp
 - **Read-Write user (Bob) denied on reads:** the MCP server picks the Vault DB role per *operation* (reads always
   use `database/creds/readonly`), but the `readwrite` policy only allowed `creds/readwrite`. The `readwrite` policy
   now also grants `database/creds/readonly` (in `vault-setup.sh`; live fix: `vault policy write readwrite ...`).
+- **ROOT CAUSE of "Agent fetching failed" right after every login (then working a few minutes later):** every WxO
+  call returned 400 `WXO-PROXY-11121E Failed to retrieve MCSP token ... "tokenExpiration": "must be less than or
+  equal to 7200"`. WxO derives the MCSP token lifetime from the user's IBM Verify access token, and Verify was set to
+  7200s, which is 7201s at issue time. Fix: Verify `accessTokenExpiry` = 3600 on web-app and agent-app
+  (`PUT /v1.0/applications/<id>`, `providers.oidc.properties.accessTokenExpiry`). Keep it below 7200.
 - **CRN lookup:** `orchestrate channels webchat embed` needs IBM Cloud resource-controller access; otherwise
   build the CRN as `crn:v1:bluemix:public:watsonx-orchestrate:<region>:a/<account-id>:<instance-id>::`.
 
