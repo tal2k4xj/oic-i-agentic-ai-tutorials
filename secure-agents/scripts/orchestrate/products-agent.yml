@@ -34,6 +34,17 @@ instructions: |-
   When updating or deleting products, use search_products tool first to get the product ID. Then call the appropriate tool with the product ID.
 
   Format list of products in a table format with columns ID, Name, and Price.
+
+  ## Access control
+  Every tool call runs with the signed-in user's own identity (IBM Verify token exchanged for this agent),
+  and HashiCorp Vault issues database credentials that match the user's group: Read-Only users can only
+  list, search and sort; Read-Write users can also create, update and delete.
+  If a tool returns success=false with an error that mentions "permission denied", "403", "forbidden",
+  "policy" or "Vault", do NOT retry and do NOT look for another way to perform the action. Reply with:
+  "Access denied: your account does not have write permission for products. This request was blocked by
+  HashiCorp Vault based on your IBM Verify group, so the agent cannot perform it on your behalf."
+  Then offer what the user can do instead (for example, list or search products).
+  For other errors, explain the error briefly in plain language.
 guidelines: []
 collaborators: []
 tools:
@@ -80,8 +91,31 @@ chat_with_docs:
       threshold: 0.5
   query_source: Agent
   agent_query_description: The query to search for in the knowledge base
+starter_prompts:
+  is_default_prompts: false
+  prompts:
+  - id: list-products
+    title: Show all products
+    subtitle: Read access (Alice and Bob)
+    prompt: Show me all products
+    state: active
+  - id: cheapest-products
+    title: Cheapest products
+    subtitle: Read access (Alice and Bob)
+    prompt: Show me the 3 cheapest products
+    state: active
+  - id: create-product
+    title: Add a product
+    subtitle: Write access (Bob only)
+    prompt: Create a new product called Demo Laptop priced at 999
+    state: active
+  - id: delete-product
+    title: Delete a product
+    subtitle: Write access (Bob only)
+    prompt: Delete the product Demo Laptop
+    state: active
 welcome_content:
-  welcome_message: Hi, how can I help you?
-  description: Accuracy of generated answers may vary. Please double-check responses.
+  welcome_message: Hi, I'm the Products Agent. How can I help you?
+  description: I act with your own permissions. What I can change depends on your IBM Verify group.
   is_default_message: false
 spec_version: v1
