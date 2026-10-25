@@ -7,7 +7,8 @@ import { StrictMode } from "react";
 import { client } from "./client/client.gen";
 
 import "./styles/globals.scss";
-import "./styles/tailwind.scss";
+import "./styles/preflight.scss";
+import "./styles/tailwind.css";
 import { Toaster } from "@/components/common/Toaster";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 

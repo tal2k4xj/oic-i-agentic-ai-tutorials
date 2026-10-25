@@ -41,6 +41,8 @@ tools:
 - AgenticMCP:update_product
 - AgenticMCP:list_products
 - AgenticMCP:create_product
+- AgenticMCP:search_products
+- AgenticMCP:sort_products_by_price
 toolkits: []
 plugins:
   agent_pre_invoke: []

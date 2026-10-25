@@ -6,11 +6,12 @@ import { defineConfig } from "vite";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    // TanStack Router must run before the JSX transform
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
     }),
+    react(),
   ],
   css: {
     preprocessorOptions: {

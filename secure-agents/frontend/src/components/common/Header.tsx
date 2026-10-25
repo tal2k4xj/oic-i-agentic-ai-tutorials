@@ -1,4 +1,5 @@
 import {
+  Button,
   Header as CarbonHeader,
   HeaderContainer,
   HeaderGlobalBar,
@@ -10,39 +11,42 @@ import {
   SideNav,
   SideNavItems,
   SkipToContent,
+  Tag,
 } from "@carbon/react";
-// import { useQueryClient } from "@tanstack/react-query";
-// import type { UserPublic } from "../../client";
+import { Logout, UserAvatar } from "@carbon/icons-react";
 import { Link } from "@tanstack/react-router";
 import useAuth from "../../hooks/useAuth";
-import UserMenu from "./UserMenu";
 import ThemeSwitcher from "./ThemeSwitcher";
 
-export function Header() {
-  const { logout } = useAuth();
-  // const queryClient = useQueryClient();
-  // const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"]);
+// Map IBM Verify groups (see scripts/vault: readonly / readwrite) to a demo-friendly role
+const getRole = (groups: string[] = []) => {
+  const g = groups.map((x) => x.toLowerCase());
+  if (g.includes("readwrite")) return { label: "Read-Write", type: "green" };
+  if (g.includes("readonly")) return { label: "Read-Only", type: "blue" };
+  return { label: "No role", type: "gray" };
+};
 
-  const handleLogout = () => {
-    logout();
-  };
+export function Header() {
+  const { logout, user } = useAuth();
+
+  const displayName =
+    user?.preferred_username || user?.full_name || user?.email || "User";
+  const role = getRole(user?.groups);
 
   const navItems: {
     title: string;
     path: string;
-  }[] = [{ title: "Feedback", path: "/feedback" }];
-
-  // TODO: WHO WILL BE ABLE TO SEE THIS TAB?
-  // if (currentUser?.is_superuser) {
-  //   navItems.push({ title: "Admin", path: "/admin" });
-  // }
-  navItems.push({ title: "Admin", path: "/admin" });
+  }[] = [
+    { title: "Agent", path: "/" },
+    { title: "Feedback", path: "/feedback" },
+    { title: "Admin", path: "/admin" },
+  ];
 
   return (
     <HeaderContainer
       render={({ isSideNavExpanded, onClickSideNavExpand }: any) => (
         <>
-          <CarbonHeader aria-label="IBM Client Engineering">
+          <CarbonHeader aria-label="Secure AI Agents">
             <SkipToContent />
             <HeaderMenuButton
               aria-label={isSideNavExpanded ? "Close menu" : "Open menu"}
@@ -51,9 +55,11 @@ export function Header() {
               aria-expanded={isSideNavExpanded}
             />
 
-            <HeaderName href="/">Client Engineering</HeaderName>
+            <HeaderName href="/" prefix="IBM">
+              Secure AI Agents
+            </HeaderName>
             <HeaderNavigation
-              aria-label="IBM Client Engineering"
+              aria-label="Secure AI Agents"
               className="hidden lg:flex"
             >
               {navItems.map((item) => (
@@ -63,8 +69,28 @@ export function Header() {
               ))}
             </HeaderNavigation>
             <HeaderGlobalBar>
+              {user && (
+                <div
+                  className="hidden items-center gap-2 pr-2 md:flex"
+                  data-testid="current-user"
+                >
+                  <UserAvatar size={20} />
+                  <span className="text-sm font-semibold">{displayName}</span>
+                  <Tag type={role.type as any} size="sm" className="m-0">
+                    {role.label}
+                  </Tag>
+                </div>
+              )}
               <ThemeSwitcher />
-              <UserMenu />
+              <Button
+                kind="ghost"
+                size="lg"
+                renderIcon={Logout}
+                onClick={logout}
+                data-testid="logout-button"
+              >
+                Log out
+              </Button>
             </HeaderGlobalBar>
             <SideNav
               aria-label="Side navigation"
@@ -81,11 +107,6 @@ export function Header() {
                   ))}
                   <HeaderMenuItem href="/settings">
                     User Settings
-                  </HeaderMenuItem>
-                  <HeaderMenuItem>
-                    <button onClick={handleLogout} className="text-red-500">
-                      Logout
-                    </button>
                   </HeaderMenuItem>
                 </HeaderSideNavItems>
               </SideNavItems>

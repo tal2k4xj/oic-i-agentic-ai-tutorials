@@ -3,6 +3,18 @@ import { useNavigate } from "@tanstack/react-router";
 import type { UserPublic } from "../client";
 import { Oauth } from "../client";
 
+export type AuthUser = UserPublic & { groups: string[] };
+
+// Verify may emit groups as strings or objects ({ displayName } / { name }).
+const normalizeGroups = (raw: unknown): string[] => {
+  if (!Array.isArray(raw)) return raw ? [String(raw)] : [];
+  return raw
+    .map((g: any) =>
+      typeof g === "string" ? g : g?.displayName || g?.name || g?.id || "",
+    )
+    .filter(Boolean);
+};
+
 const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null;
 };
@@ -11,7 +23,7 @@ const useAuth = () => {
   const navigate = useNavigate();
 
   // Get user info from IBM Verify token
-  const { data: user, isLoading } = useQuery<UserPublic | null, Error>({
+  const { data: user, isLoading } = useQuery<AuthUser | null, Error>({
     queryKey: ["currentUser"],
     queryFn: async () => {
       try {
@@ -40,7 +52,8 @@ const useAuth = () => {
           preferred_username: payload.preferred_username || null,
           unique_name: payload.unique_name || null,
           upn: payload.upn || null,
-        } as UserPublic;
+          groups: normalizeGroups(payload.groups),
+        } as AuthUser;
       } catch (err) {
         console.error("Error decoding token:", err);
         localStorage.removeItem("access_token");
@@ -57,7 +70,6 @@ const useAuth = () => {
     mutationFn: async () => {
       const accessToken = localStorage.getItem("access_token");
       const refreshToken = localStorage.getItem("refresh_token");
-      const idToken = localStorage.getItem("id_token");
 
       if (!accessToken) {
         return null;
@@ -76,43 +88,15 @@ const useAuth = () => {
         console.error("Error revoking tokens with IBM Verify:", error);
       }
 
-      // Fetch OAuth config to get tenant info for logout URL
-      try {
-        const config = await Oauth.getOauthConfig();
-        return { config: config.data, idToken };
-      } catch (error) {
-        console.error("Error fetching OAuth config:", error);
-        return { config: null, idToken };
-      }
+      return null;
     },
-    onSuccess: (data) => {
-      // Clear local storage first
+    onSuccess: () => {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("id_token");
-
-      const config = data?.config;
-      const idToken = data?.idToken;
-
-      // Redirect to IBM Verify logout to clear the session
-      if (config && config.tenant_id && config.frontend_host) {
-        // IBM Verify logout endpoint with post_logout_redirect_uri and id_token_hint
-        // According to OIDC standard, id_token_hint is required for secure logout
-        const logoutUrl = `https://${config.tenant_id}/oauth2/rplogout`;
-        const redirectUri = `${config.frontend_host}`;
-        
-        // Build logout URL with required parameters
-        const params = new URLSearchParams();
-        if (idToken) {
-          params.append("id_token_hint", idToken);
-        }
-        params.append("post_logout_redirect_uri", redirectUri);
-        
-        window.location.href = `${logoutUrl}?${params.toString()}`;
-      } else {
-        // Fallback to local navigation if config not available
-        window.location.href = "/login";
-      }
+      // Full reload so the embedded WxO chat (and its user session) is torn down.
+      // The login page uses prompt=login, so IBM Verify always asks for credentials.
+      window.location.href = "/login";
     },
     onError: () => {
       // On error, still clear local storage and redirect

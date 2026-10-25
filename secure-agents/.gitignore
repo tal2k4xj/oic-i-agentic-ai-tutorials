@@ -1,0 +1,8 @@
+# Secrets - never commit
+local/
+.env.production
+scripts/vault/.env
+scripts/orchestrate/.env
+scripts/orchestrate/.venv/
+.claude/
+scripts/vault/stdout

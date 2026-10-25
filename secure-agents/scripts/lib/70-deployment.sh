@@ -437,6 +437,8 @@ metadata:
     app: vault
 spec:
   replicas: 1
+  strategy:
+    type: Recreate   # vault-data is RWO; RollingUpdate deadlocks on the volume
   selector:
     matchLabels:
       app: vault
@@ -574,7 +576,7 @@ deploy_mcp() {
         fi
     else
         print_status "Creating new MCP application..." "deployment"
-        create_app_from_git "mcp" "secure-agents/mcp" "8001" || return 1
+        create_app_from_git "mcp" "secure-agents/mcp" "8080" || return 1
     fi
     
     # Configure branch filter if specified

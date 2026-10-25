@@ -1,0 +1,22 @@
+/*
+ * Tailwind CSS v4 entry point (plain CSS, not SCSS, so Sass never touches the
+ * Tailwind at-rules). Preflight is intentionally omitted: Carbon + preflight.scss
+ * provide the base styles.
+ */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+
+/* Load the v3-style JS config (cds-* colors, lg breakpoint, fonts, animate plugin) */
+@config "../../tailwind.config.js";
+
+/* Scan all app sources for class names */
+@source "../**/*.{ts,tsx}";
+
+* {
+  border-color: var(--cds-border-subtle);
+}
+
+body {
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+}

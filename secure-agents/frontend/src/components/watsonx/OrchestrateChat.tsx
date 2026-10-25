@@ -1,5 +1,4 @@
-import React, { useEffect } from "react";
-import { useRouter } from "@tanstack/react-router";
+import React, { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loading } from "@carbon/react";
 import { getCustomLanguageSelector, defaultLocale } from "./languageSelector";
@@ -16,8 +15,7 @@ declare global {
 
 const OrchestrateChat: React.FC = () => {
   const html_container_id = "wxo-container";
-  const router = useRouter();
-  const pathname = router.state.location.pathname;
+  const [chatReady, setChatReady] = useState(false);
 
   // Get authentication state
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -76,6 +74,7 @@ const OrchestrateChat: React.FC = () => {
   // Register event handlers when chat loads
   const onChatLoad = (instance: any) => {
     window.wxoLoader.chatInstance = instance;
+    setChatReady(true);
 
     if (typeof instance.on === "function") {
       instance.on("send", handlers.sendHandler);
@@ -145,14 +144,12 @@ const OrchestrateChat: React.FC = () => {
 
           // Options: float (default) | custom | fullscreen-overlay
           // width and height optional, only honored when form is float
+          // Render inside #wxo-container (below the app header) instead of a
+          // fullscreen overlay, so the app header with the Log out button stays visible.
           layout: {
-            showHeader: true,
-            form: "fullscreen-overlay",
-            showOrchestrateHeader: true,
-            width: "600px",
-            height: "600px",
-            showMaxWidth: false,
-            customElement: null,
+            form: "custom",
+            customElement: document.getElementById(html_container_id),
+            showOrchestrateHeader: false, // its "Analytics" link points to a page this app doesn't have
           },
 
           // empty for default style - try combining #fff0f7 #ffafd2 #ee5396
@@ -197,41 +194,19 @@ const OrchestrateChat: React.FC = () => {
       });
   }, [isAuthLoading, user]); // Only initialize when auth state is resolved
 
-  // Show/hide container based on route
-  useEffect(() => {
-    const container = document.getElementById(html_container_id);
-    if (container && pathname === "/") {
-      container.style.display = "block";
-    }
-
-    // Hide container when leaving the route
-    // Ensure body scroll is enabled when leaving
-    return () => {
-      const container = document.getElementById(html_container_id);
-      if (container) {
-        container.style.display = "none";
-        document.body.style.overflow = "";
-      }
-    };
-  }, [pathname]);
-
-  // Show loading state while checking authentication
-  if (isAuthLoading) {
-    return (
-      <div id={html_container_id}>
-        <Loading description="Authenticating..." />
-      </div>
-    );
-  }
-
-  // Don't render if user is not authenticated (shouldn't happen in protected route)
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div id={html_container_id}>
-      <Loading description="Booting watsonx Orchestrate" />
+    <div className="relative h-full w-full">
+      {(isAuthLoading || !chatReady) && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loading
+            withOverlay={false}
+            description={
+              isAuthLoading ? "Authenticating..." : "Booting watsonx Orchestrate"
+            }
+          />
+        </div>
+      )}
+      <div id={html_container_id} className="h-full w-full" />
     </div>
   );
 };

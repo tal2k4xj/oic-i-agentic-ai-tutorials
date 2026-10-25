@@ -367,4 +367,35 @@ oc get builds -n confused-deputy --sort-by=.metadata.creationTimestamp
 
 ---
 
-*This file was last updated after the OpenShift deployment session on 2026-10-12.*
+## Issues found during the 2026-10-25 setup session
+
+- **MCP route 503:** the `mcp` route targets port 8080 (nginx proxy) but the Service only exposed 8001.
+  `create_app_from_git "mcp"` now uses port 8080. Live fix: `oc patch svc mcp --type=json -p '[{"op":"replace","path":"/spec/ports","value":[{"port":8080,"targetPort":8080,"protocol":"TCP"}]}]'`
+  (`/sse` should return 401 without a token, `/health` 200).
+- **Vault pod stuck in ContainerCreating:** `vault-data` is RWO, so a RollingUpdate can never attach the volume
+  to the new pod. The Vault Deployment now uses `strategy: Recreate`. After any Vault restart, unseal again.
+- **`VITE_WXO_TENANT_ID` is `<account-id>_<instance-id>`** (same value as the orchestration ID), not just the
+  instance ID (WxO reports `tenant_id` in this form). With the bare instance ID the embedded chat shows "Agent fetching failed" (confirmed).
+- **Embed security:** the WxO *Public key* field must contain `local/keys/public.pem` (your key), not the
+  IBM-provided key. Wrong key => "Authentication Error" in the embedded chat.
+- **IBM Verify (Custom Application template):** the UI hides *Client credentials* and *Token exchange*, but the
+  API accepts them (`PUT /v1.0/applications/<id>`, `providers.oidc.properties.grantTypes`). Also required:
+  web-app `clientAuthMethod` = `default` (not `private_key_jwt`) and agent-app automatic access
+  (`POST /v1.0/owner/applications/<id>/entitlements {"birthRightAccess":true}`).
+- **UI still unstyled after the `@source` fix (supersedes issue #6 above):** in Tailwind v4 the v3
+  `@tailwind base/components/utilities` directives don't load the default theme or `tailwind.config.js`, so only
+  theme-independent utilities were generated (no `p-6`, `max-w-sm`, `cds-*` colors) and the logo filled the screen.
+  Tailwind now lives in plain CSS `frontend/src/styles/tailwind.css` (`@import "tailwindcss/theme.css"`,
+  `@import "tailwindcss/utilities.css"`, `@config "../../tailwind.config.js"`, `@source`); `tailwind.scss` was removed
+  and `preflight.scss` is imported from `main.tsx`.
+- **Embedded chat layout:** `fullscreen-overlay` covered the app header (no logout) and WxO's own header links to
+  `/analytics` (404 here, and the chat would not reload afterwards). The chat now uses `layout.form: "custom"` inside
+  the `_layout` route (kept mounted, hidden on other routes) with `showOrchestrateHeader: false`.
+- **Switching demo users:** web-app has no Verify single-logout configured, so logout clears the local session and the
+  login request sends `prompt=login` to force the Verify sign-in form.
+- **CRN lookup:** `orchestrate channels webchat embed` needs IBM Cloud resource-controller access; otherwise
+  build the CRN as `crn:v1:bluemix:public:watsonx-orchestrate:<region>:a/<account-id>:<instance-id>::`.
+
+---
+
+*This file was last updated after the setup session on 2026-10-25.*
