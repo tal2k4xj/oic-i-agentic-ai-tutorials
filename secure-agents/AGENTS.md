@@ -393,6 +393,10 @@ oc get builds -n confused-deputy --sort-by=.metadata.creationTimestamp
   the `_layout` route (kept mounted, hidden on other routes) with `showOrchestrateHeader: false`.
 - **Switching demo users:** web-app has no Verify single-logout configured, so logout clears the local session and the
   login request sends `prompt=login` to force the Verify sign-in form.
+- **"Agent fetching failed" with every WxO call returning 400** (`/profiles/me`, `/api/v1/auth/ticket`,
+  `.../environments/<id>/release`) after an agent re-import + deploy, while tenant ID and embed keys were correct:
+  redeploying the agent again (`orchestrate agents import -f ... && orchestrate agents deploy --name ...`) fixed it.
+  Root cause not identified. Check embed keys via `GET $SERVICE_INSTANCE/v1/embed/secure/config` (IAM token).
 - **CRN lookup:** `orchestrate channels webchat embed` needs IBM Cloud resource-controller access; otherwise
   build the CRN as `crn:v1:bluemix:public:watsonx-orchestrate:<region>:a/<account-id>:<instance-id>::`.
 
